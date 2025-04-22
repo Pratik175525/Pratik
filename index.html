@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>D3.js Dashboard - Population by Age Group</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .bar.population {
+      fill: #1f77b4;
+    }
+    .bar.mainworkers {
+      fill: #2ca02c;
+    }
+    .bar.seekingwork {
+      fill: #ff7f0e;
+    }
+    .bar.nonworkers {
+      fill: #d62728;
+    }
+    .bar:hover {
+      opacity: 0.8;
+    }
+    .tooltip {
+      position: absolute;
+      background-color: white;
+      border: 1px solid #ccc;
+      padding: 8px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    select {
+      margin-bottom: 20px;
+      padding: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Population Dashboard by Age Group</h2>
+
+  <label for="category">Category:</label>
+  <select id="category">
+    <option value="Population">Population</option>
+    <option value="MainWorkers">MainWorkers</option>
+    <option value="SeekingWork">SeekingWork</option>
+    <option value="NonWorkers">NonWorkers</option>
+  </select>
+
+  <label for="gender">Gender:</label>
+  <select id="gender">
+    <option value="Persons">Persons</option>
+    <option value="Males">Males</option>
+    <option value="Females">Females</option>
+  </select>
+
+  <svg width="900" height="500"></svg>
+  <div class="tooltip" id="tooltip"></div>
+
+  <script>
+    const fullData = [
+      { age: "5-9", category: "Population", gender: "Persons", value: 105911 },
+      { age: "10-14", category: "Population", gender: "Persons", value: 110609 },
+      { age: "15-19", category: "Population", gender: "Persons", value: 114641 },
+      { age: "20-24", category: "Population", gender: "Persons", value: 117922 },
+      { age: "25-29", category: "Population", gender: "Persons", value: 117089 },
+      { age: "30-34", category: "Population", gender: "Persons", value: 98397 },
+      { age: "35-39", category: "Population", gender: "Persons", value: 94814 },
+      { age: "40-49", category: "Population", gender: "Persons", value: 147510 },
+
+      { age: "5-9", category: "Population", gender: "Males", value: 54000 },
+      { age: "10-14", category: "Population", gender: "Males", value: 56000 },
+      { age: "15-19", category: "Population", gender: "Males", value: 57000 },
+      { age: "20-24", category: "Population", gender: "Males", value: 59000 },
+      { age: "25-29", category: "Population", gender: "Males", value: 58000 },
+
+      { age: "5-9", category: "Population", gender: "Females", value: 51911 },
+      { age: "10-14", category: "Population", gender: "Females", value: 54609 },
+      { age: "15-19", category: "Population", gender: "Females", value: 57641 },
+      { age: "20-24", category: "Population", gender: "Females", value: 58922 },
+      { age: "25-29", category: "Population", gender: "Females", value: 59089 },
+
+      { age: "5-9", category: "MainWorkers", gender: "Males", value: 2000 },
+      { age: "10-14", category: "MainWorkers", gender: "Males", value: 2126 },
+      { age: "15-19", category: "MainWorkers", gender: "Males", value: 4215 },
+      { age: "20-24", category: "MainWorkers", gender: "Males", value: 11289 },
+      { age: "25-29", category: "MainWorkers", gender: "Males", value: 17200 },
+
+      { age: "15-19", category: "MainWorkers", gender: "Females", value: 800 },
+      { age: "20-24", category: "MainWorkers", gender: "Females", value: 1200 },
+      { age: "25-29", category: "MainWorkers", gender: "Females", value: 2100 },
+
+      { age: "5-9", category: "NonWorkers", gender: "Females", value: 25000 },
+      { age: "10-14", category: "NonWorkers", gender: "Females", value: 50505 },
+      { age: "15-19", category: "NonWorkers", gender: "Females", value: 17143 },
+
+      { age: "10-14", category: "NonWorkers", gender: "Males", value: 18000 },
+      { age: "15-19", category: "NonWorkers", gender: "Males", value: 13000 },
+      { age: "20-24", category: "NonWorkers", gender: "Males", value: 11000 },
+
+      { age: "15-19", category: "SeekingWork", gender: "Males", value: 1500 },
+      { age: "20-24", category: "SeekingWork", gender: "Males", value: 3000 },
+      { age: "25-29", category: "SeekingWork", gender: "Males", value: 2800 },
+      { age: "30-34", category: "SeekingWork", gender: "Males", value: 1900 },
+      { age: "35-39", category: "SeekingWork", gender: "Males", value: 1700 },
+
+      { age: "15-19", category: "SeekingWork", gender: "Females", value: 900 },
+      { age: "20-24", category: "SeekingWork", gender: "Females", value: 2400 },
+      { age: "25-29", category: "SeekingWork", gender: "Females", value: 2300 },
+      { age: "30-34", category: "SeekingWork", gender: "Females", value: 1500 },
+      { age: "35-39", category: "SeekingWork", gender: "Females", value: 1300 }
+    ];
+
+    const svg = d3.select("svg");
+    const tooltip = d3.select("#tooltip");
+    const margin = { top: 40, right: 20, bottom: 60, left: 80 };
+    const width = +svg.attr("width") - margin.left - margin.right;
+    const height = +svg.attr("height") - margin.top - margin.bottom;
+
+    const chart = svg.append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleBand().range([0, width]).padding(0.2);
+    const y = d3.scaleLinear().range([height, 0]);
+
+    const xAxisGroup = chart.append("g").attr("transform", `translate(0,${height})`);
+    const yAxisGroup = chart.append("g");
+
+    function updateChart(category, gender) {
+      const filteredData = fullData.filter(d => d.category === category && d.gender === gender);
+
+      if (filteredData.length === 0) {
+        chart.selectAll(".bar").remove();
+        xAxisGroup.call(d3.axisBottom(x).tickFormat(() => ""));
+        yAxisGroup.call(d3.axisLeft(y).tickFormat(() => ""));
+        return;
+      }
+
+      x.domain(filteredData.map(d => d.age));
+      y.domain([0, d3.max(filteredData, d => d.value)]).nice();
+
+      xAxisGroup.transition().call(d3.axisBottom(x));
+      yAxisGroup.transition().call(d3.axisLeft(y));
+
+      const bars = chart.selectAll(".bar")
+        .data(filteredData, d => d.age);
+
+      const categoryClass = category.toLowerCase();
+
+      bars.enter()
+        .append("rect")
+        .attr("class", `bar ${categoryClass}`)
+        .attr("x", d => x(d.age))
+        .attr("y", d => y(0))
+        .attr("width", x.bandwidth())
+        .attr("height", 0)
+        .on("mousemove", (event, d) => {
+          tooltip.style("left", event.pageX + 10 + "px")
+                 .style("top", event.pageY - 25 + "px")
+                 .style("opacity", 1)
+                 .html(`<strong>Age:</strong> ${d.age}<br><strong>Value:</strong> ${d.value}`);
+        })
+        .on("mouseout", () => tooltip.style("opacity", 0))
+        .merge(bars)
+        .transition()
+        .duration(600)
+        .attr("x", d => x(d.age))
+        .attr("y", d => y(d.value))
+        .attr("width", x.bandwidth())
+        .attr("height", d => height - y(d.value))
+        .attr("class", `bar ${categoryClass}`);
+
+      bars.exit()
+        .transition()
+        .duration(600)
+        .attr("y", y(0))
+        .attr("height", 0)
+        .remove();
+    }
+
+    const initialCategory = document.getElementById("category").value;
+    const initialGender = document.getElementById("gender").value;
+    updateChart(initialCategory, initialGender);
+
+    document.getElementById("category").addEventListener("change", function() {
+      updateChart(this.value, document.getElementById("gender").value);
+    });
+
+    document.getElementById("gender").addEventListener("change", function() {
+      updateChart(document.getElementById("category").value, this.value);
+    });
+  </script>
+</body>
+</html>
